@@ -1,6 +1,6 @@
 {
   "name": "@octopus-security/auth-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Shared JWT auth client + Express middleware for Octopus services",
   "main": "index.js",
   "publishConfig": {
@@ -14,7 +14,7 @@
     "jsonwebtoken": "^9.0.2"
   },
   "peerDependencies": {
-    "express": "^4.0.0"
+    "express": "^4.0.0 || ^5.0.0"
   },
   "files": ["index.js", "lib/"]
 }
