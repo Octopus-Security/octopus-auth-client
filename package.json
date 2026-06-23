@@ -1,0 +1,20 @@
+{
+  "name": "@octopus-security/auth-client",
+  "version": "1.0.0",
+  "description": "Shared JWT auth client + Express middleware for Octopus services",
+  "main": "index.js",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Octopus-Security/octopus-auth-client.git"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2"
+  },
+  "peerDependencies": {
+    "express": "^4.0.0"
+  },
+  "files": ["index.js", "lib/"]
+}
