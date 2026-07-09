@@ -1,0 +1,18 @@
+node_modules/
+
+# Environment / secrets (keep .env.example tracked)
+.env
+.env.local
+.env.*.local
+stack.env
+
+# Logs
+*.log
+npm-debug.log*
+
+# Build output
+dist/
+build/
+
+# OS cruft
+.DS_Store
