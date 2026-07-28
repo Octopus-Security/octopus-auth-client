@@ -87,3 +87,34 @@ After `createAuthMiddleware()` runs successfully, `req.user` is always:
 ```js
 { userId, username, role }  // role defaults to 'user' if absent in token
 ```
+
+## The auth contract
+
+Every Octopus service trusts tokens signed with the same shared `JWT_SECRET`.
+That has one consequence worth internalising before you write auth anywhere:
+
+> **A valid signature does not mean the caller is logged in.**
+
+`octopus-auth` issues short-lived *purpose* tokens part-way through login, signed
+with that same secret:
+
+| `purpose` | Issued when | Means |
+|---|---|---|
+| `totp-challenge` | Password accepted, 2FA code not yet given | **Not** authenticated |
+| `totp-enroll` | 2FA-less account being forced to enrol | **Not** authenticated |
+
+A session token carries **no `purpose` claim**. `verifyToken()` therefore rejects
+any token that has one — otherwise a caller holding only a stolen password could
+present a challenge token and be let through, defeating `REQUIRE_2FA`, which
+exists precisely to survive a stolen password.
+
+If you are writing auth for a service that does *not* use this package, it must
+apply the same rule. `test/contract.test.js` is the executable definition — 22
+cases covering purpose tokens, expiry, wrong secrets, `alg: none`, missing
+secrets, and role handling.
+
+```bash
+npm test
+```
+
+CI runs it on every push, and `npm publish` is gated on it.

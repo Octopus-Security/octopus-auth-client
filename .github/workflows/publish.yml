@@ -16,6 +16,8 @@ jobs:
           registry-url: 'https://npm.pkg.github.com'
           scope: '@octopus-security'
       - run: npm ci || npm install
+      # Never publish a build that fails the contract — every service inherits it.
+      - run: npm test
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
