@@ -84,13 +84,21 @@ test('rejects an unsigned ("alg: none") token', () => {
   assert.throws(() => verifyToken(unsigned));
 });
 
-test('refuses to run at all when JWT_SECRET is unset', () => {
-  const saved = process.env.JWT_SECRET;
+test('refuses to run at all with no key material', () => {
+  // Message widened in 1.4.0: there are now two ways to supply a key, and the
+  // error has to name both or it sends you looking for the wrong one. The rule
+  // is unchanged — a service that can verify nothing must say so rather than
+  // treat every visitor as anonymous.
+  const savedSecret = process.env.JWT_SECRET;
+  const savedPublic = process.env.AUTH_PUBLIC_KEY;
   delete process.env.JWT_SECRET;
+  delete process.env.AUTH_PUBLIC_KEY;
   try {
-    assert.throws(() => verifyToken(session()), /JWT_SECRET is not set/);
+    assert.throws(() => verifyToken(session()), /No verification key/);
   } finally {
-    process.env.JWT_SECRET = saved;
+    process.env.JWT_SECRET = savedSecret;
+    if (savedPublic === undefined) delete process.env.AUTH_PUBLIC_KEY;
+    else process.env.AUTH_PUBLIC_KEY = savedPublic;
   }
 });
 
