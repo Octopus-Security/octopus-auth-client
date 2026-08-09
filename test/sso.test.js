@@ -160,3 +160,55 @@ test('onUser shapes req.user, so an app can keep the shape it already had', asyn
   const { req } = await run(mw, `octopus_sso=${session()}`);
   assert.deepEqual(Object.keys(req.user).sort(), ['role', 'token', 'username']);
 });
+
+// ── Services without JWT_SECRET ──────────────────────────────────────────────
+//
+// The local pre-check needs the signing secret and not every consumer has it.
+// cortex deliberately does not: it holds every other credential on the estate,
+// and the signing secret would let that one box MINT sessions rather than only
+// read them. It has always verified remotely instead.
+//
+// So the pre-check has to be an optimisation. If its absence rejected every
+// cookie, migrating cortex onto this package would lock every user out of it on
+// the first deploy — including the admin panel you would use to undo that.
+
+const { spawnSync } = require('node:child_process');
+
+function inChildWithoutSecret(body) {
+  // JWT_SECRET is read at call time and this suite sets it globally, so the
+  // no-secret case has to run in its own process to be honest.
+  const r = spawnSync(process.execPath, ['-e', body], {
+    env: { ...process.env, JWT_SECRET: '', NODE_PATH: process.env.NODE_PATH || '' },
+    encoding: 'utf8',
+  });
+  return (r.stdout || '') + (r.stderr || '');
+}
+
+test('without JWT_SECRET it still authenticates, remotely', () => {
+  const out = inChildWithoutSecret(`
+    const { createSSOMiddleware } = require(${JSON.stringify(process.cwd())});
+    const mw = createSSOMiddleware({
+      fetch: async () => ({ ok: true, json: async () => (${JSON.stringify(VALID_BODY)}) }),
+    });
+    const req = { headers: { cookie: 'octopus_sso=any.token.value' } };
+    mw(req, {}, () => console.log('user=' + (req.user && req.user.username) + ' preCheck=' + mw.localPreCheck));
+  `);
+  assert.match(out, /user=testuser/, 'a service with no secret must still be able to authenticate');
+  assert.match(out, /preCheck=false/, 'and must know it is not pre-checking');
+});
+
+test('remote:false without JWT_SECRET refuses to be constructed', () => {
+  // The one combination that can verify nothing at all. Failing loudly at
+  // startup beats a service that silently treats every visitor as anonymous.
+  const out = inChildWithoutSecret(`
+    const { createSSOMiddleware } = require(${JSON.stringify(process.cwd())});
+    try { createSSOMiddleware({ remote: false }); console.log('NO ERROR'); }
+    catch (e) { console.log('threw: ' + e.message); }
+  `);
+  assert.match(out, /threw:.*JWT_SECRET/);
+});
+
+test('with JWT_SECRET the pre-check is on', () => {
+  const mw = createSSOMiddleware({ fetch: fakeFetch(VALID_BODY) });
+  assert.equal(mw.localPreCheck, true);
+});
