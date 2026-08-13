@@ -111,9 +111,35 @@ const { ok, data } = await auth.refresh(token);
 
 | Variable | Required | Default |
 |---|---|---|
-| `JWT_SECRET` | Yes | — |
+| `JWT_SECRET` | One of these two | — |
+| `AUTH_PUBLIC_KEY` | One of these two | — |
+| `AUTH_PRIVATE_KEY` | `octopus-auth` only | — |
+| `AUTH_KEY_ID` | No | unset (no `kid` header) |
 | `AUTH_SERVICE_URL` | No | `http://octopus-auth:3002` |
 | `AUTH_REMOTE_VERIFY` | No | unset (local verification only) |
+
+A verifier needs `JWT_SECRET` **or** `AUTH_PUBLIC_KEY`; during the RS256
+migration it holds both, and tokens of either kind verify. Only `octopus-auth`
+gets `AUTH_PRIVATE_KEY`, and holding it is what makes it the only service able to
+mint a session. A service that verifies remotely needs no key at all — cortex
+deliberately has none.
+
+### The local pre-check is an optimisation, and must never refuse
+
+In remote mode both middlewares check the signature locally first, so an expired
+or forged token costs no network call. That check is **skipped** for a token
+whose algorithm the service holds no key for, and the remote verifier decides.
+
+This is not a nicety. `verifyToken` answers *"does this check out against a key I
+hold"*, which is not *"is this token valid"* — and the two diverge exactly when
+auth switches algorithm before its verifiers have the new key. Reading the first
+as the second locked every user out of the estate mid-migration, including out of
+the admin panel you would use to undo it. `canPreCheck(token)` is that
+distinction, and it is exported if you need it.
+
+`createAuthMiddleware({ remote: false })` is the deliberate exception: with
+nothing behind it, deferring would mean admitting an unverified session, so it
+keeps rejecting.
 
 ## req.user shape
 
