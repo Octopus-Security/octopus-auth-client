@@ -16,3 +16,8 @@ build/
 
 # OS cruft
 .DS_Store
+
+# Never commit this. It carried a GitHub Packages _authToken in this repo from
+# 2026-06-23 to 2026-09-05. The image build does not need it: the Dockerfile
+# writes its own from ARG NPM_TOKEN and deletes it again.
+.npmrc
